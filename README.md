@@ -85,7 +85,14 @@ Browsers can't read other browsers' files or open a local port, so Flecha ships 
 
 ### Linux (Arch and Omarchy)
 
-There are no prebuilt Linux packages yet. Build the release (see [Build from source on Linux](#linux)), then install the package it makes:
+There are no prebuilt Linux packages yet. `flecha-git` builds Flecha from source, from Chromium's release tarball (several hours, about 30 GB of disk and 16 GB of memory):
+
+```bash
+git clone https://github.com/thieso2/flecha-browser.git
+cd flecha-browser/chromium/linux/aur && makepkg -si     # or: yay -S flecha-git, once it is on the AUR
+```
+
+If you already build Flecha with the scripts (see [Build from source on Linux](#linux)), install the package `build-release.sh` makes instead:
 
 ```bash
 cd "$CHROMIUM_SRC/out/Release/flecha-release" && makepkg -si
@@ -162,7 +169,7 @@ chromium/
   patches/       the native changes to Chromium, as numbered unified diffs
   branding/      app icon, logo, BRANDING, the dmg background
   build/         dev.gn and release.gn (the GN args), linux-dev.gn and linux-release.gn
-  linux/         the Linux launcher, desktop entry and PKGBUILD
+  linux/         the Linux launcher, desktop entry and PKGBUILD; aur/ is flecha-git
   scripts/       apply, build, run, env, build-release, package-release,
                  package-release-linux, install-native-host, dmg-layout.py
   shell/         the MV3 component extension that draws the window

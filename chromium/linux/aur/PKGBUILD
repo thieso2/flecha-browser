@@ -15,7 +15,7 @@ url='https://github.com/thieso2/flecha-browser'
 license=('MIT' 'BSD-3-Clause')
 depends=('alsa-lib' 'at-spi2-core' 'dbus' 'expat' 'gtk3' 'hicolor-icon-theme' 'libcups' 'libpulse' 'libva'
   'libxkbcommon' 'libxss' 'mesa' 'nspr' 'nss' 'pango' 'systemd-libs' 'ttf-liberation' 'xdg-utils')
-makedepends=('git' 'gn' 'gperf' 'java-runtime-headless' 'ninja' 'nodejs' 'npm' 'python')
+makedepends=('git' 'gperf' 'java-runtime-headless' 'ninja' 'nodejs' 'npm' 'python')
 optdepends=(
   'nodejs: importing from other browsers and the coding-agent MCP server (Node 22.5+)'
   'libsecret: GNOME keyring password storage'
@@ -69,7 +69,11 @@ prepare() {
 
 build() {
   cd "chromium-$_chromium_ver"
-  gn gen out/Release --args="$(cat ../flecha/chromium/build/linux-release.gn)"
+  # The gn this Chromium expects (Arch's is older), from the tarball's own copy of its source.
+  local llvm=third_party/llvm-build/Release+Asserts/bin
+  CC="$PWD/$llvm/clang" CXX="$PWD/$llvm/clang++" AR="$PWD/$llvm/llvm-ar" \
+    python3 tools/gn/bootstrap/bootstrap.py -o out/Release/gn --skip-generate-buildfiles
+  out/Release/gn gen out/Release --args="$(cat ../flecha/chromium/build/linux-release.gn)"
   ninja -C out/Release chrome chrome_sandbox
 }
 
