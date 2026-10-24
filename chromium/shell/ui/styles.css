@@ -61,6 +61,11 @@ body {
   width: 70px;
 }
 
+/* On Linux the compositor or Chromium's own frame draws the window controls, outside the page. */
+[data-platform='linux'] .traffic-lights {
+  display: none;
+}
+
 .spacer {
   flex: 1;
 }

@@ -7,6 +7,7 @@ import './noPageMenu';
 import { invoke, on } from './client';
 import type { BoostFile } from './features/boosts';
 import { compileBoost } from './features/compileBoost';
+import { labelKeys } from './lib/shortcuts';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const list = $<HTMLUListElement>('list');
@@ -107,5 +108,7 @@ window.addEventListener('beforeunload', (e) => {
 });
 window.addEventListener('hashchange', () => void open(selected()));
 on('boosts:changed', () => void renderList());
+
+labelKeys();
 
 void open(selected());

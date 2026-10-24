@@ -1,5 +1,6 @@
 import type { IconName } from './icons.js';
 import type { FlechaApi, UiState } from '../../shared/types';
+import { isMac, thisComputer } from '../lib/platform.js';
 
 /**
  * The first-run tour, full window: steps on the left, a live miniature Flecha on the right
@@ -244,7 +245,7 @@ export function setupOnboarding(api: FlechaApi, h: H, icon: (name: IconName) => 
     const list = !browsers
       ? h('div', { class: 'tour-note' }, h('span', { class: 'tour-spinner' }), 'Looking for your browsers…')
       : !browsers.length
-        ? h('div', { class: 'tour-note' }, 'No other browsers with data on this Mac. You can import later from File → Import Browser Data.')
+        ? h('div', { class: 'tour-note' }, `No other browsers with data on ${thisComputer}. You can import later from ${isMac ? 'File → Import Browser Data' : 'the command bar: type import'}.`)
         : h(
             'div',
             { class: 'tour-browsers' },
@@ -299,7 +300,7 @@ export function setupOnboarding(api: FlechaApi, h: H, icon: (name: IconName) => 
     return h(
       'div',
       { class: 'tour-step' },
-      heading('For developers', 'Built for the web you build', servers.length ? `Flecha already found ${servers.length} dev server${servers.length === 1 ? '' : 's'} running on this Mac. They live at the top of the sidebar.` : 'Start a dev server and it shows up at the top of the sidebar, with its console errors.'),
+      heading('For developers', 'Built for the web you build', servers.length ? `Flecha already found ${servers.length} dev server${servers.length === 1 ? '' : 's'} running on ${thisComputer}. They live at the top of the sidebar.` : 'Start a dev server and it shows up at the top of the sidebar, with its console errors.'),
       h(
         'div',
         { class: 'tour-features' },

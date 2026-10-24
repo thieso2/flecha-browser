@@ -6,6 +6,7 @@
 import type { RecordedKey, SettingsApi, SettingsView, TabsMenuAction, TabsView } from '../shared/types';
 import type { AskOptions, TabsMenuItem } from './lib/tabManager';
 import { cmd, invoke, on } from './client';
+import { isMac, primaryModifier } from './lib/platform';
 import type { NotYet } from './settingsHandlers';
 import { askDialog, popupMenu, toast } from './settingsUi';
 
@@ -36,7 +37,7 @@ window.addEventListener(
       return;
     }
     // ⌘F: Electron's Find menu item sends this to Settings; here the page catches it itself.
-    if (e.code === 'KeyF' && e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+    if (e.code === 'KeyF' && e[primaryModifier] && !e[isMac ? 'ctrlKey' : 'metaKey'] && !e.altKey && !e.shiftKey) {
       e.preventDefault();
       for (const fn of findListeners) fn();
     }

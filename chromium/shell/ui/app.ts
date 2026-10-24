@@ -1,5 +1,6 @@
 import { devSuggestions } from './devCommands.js';
 import { ICONS, type IconName } from './icons.js';
+import { isMac, platform } from '../lib/platform.js';
 import { setupOnboarding } from './onboarding.js';
 import { SPACE_COLORS, SPACE_EMOJIS } from './spaceChoices.js';
 import type { DownloadInfo, DropTarget, FlechaApi, HistoryEntry, PaletteMode, PeekState, PinnedNode, Space, TabInfo, UiState } from '../../shared/types';
@@ -49,6 +50,7 @@ function icon(name: IconName) {
 
 // Static markup marks icons as <i data-icon="name">; swap them for the shared SVGs.
 for (const el of document.querySelectorAll<HTMLElement>('i[data-icon]')) el.replaceWith(icon(el.dataset.icon as IconName));
+document.documentElement.dataset.platform = platform;
 
 function host(url: string) {
   try {
@@ -231,7 +233,7 @@ function renderUrlbar(s: UiState, active: TabInfo | undefined) {
   $('urlbar-text').textContent = url ? host(url) : 'Search or enter URL';
   $('urlbar').classList.toggle('empty', !url);
   $('urlbar-env').replaceChildren(
-    ...(s.environment ? [h('span', { class: `env-badge ${s.environment.tone}`, title: `${s.environment.name} · ⌥⌘E to switch` }, s.environment.label)] : []),
+    ...(s.environment ? [h('span', { class: `env-badge ${s.environment.tone}`, title: s.shortcuts.nextEnvironment ? `${s.environment.name} · ${s.shortcuts.nextEnvironment} to switch` : s.environment.name }, s.environment.label)] : []),
   );
 }
 
@@ -1000,7 +1002,7 @@ function renderDownloads(items: DownloadInfo[], started?: DownloadInfo) {
           'button',
           {
             class: 'icon-button',
-            title: d.state === 'progressing' ? 'Cancel' : 'Show in Finder',
+            title: d.state === 'progressing' ? 'Cancel' : isMac ? 'Show in Finder' : 'Show in folder',
             onclick: (e: Event) => {
               e.stopPropagation();
               if (d.state === 'progressing') api.cancelDownload(d.id);

@@ -1,6 +1,8 @@
 import type { RecordedKey, SettingsApi, SettingsView } from '../../shared/types';
 import { ICONS, type IconName } from './icons.js';
 import { setupTabsPane } from './tabsPane.js';
+import { isMac, thisComputer } from '../lib/platform.js';
+import { displayKeys, labelKeys } from '../lib/shortcuts.js';
 
 declare global {
   interface Window {
@@ -20,6 +22,8 @@ function icon(name: IconName) {
 setupTabsPane(icon);
 
 for (const el of document.querySelectorAll<HTMLElement>('i[data-icon]')) el.replaceWith(icon(el.dataset.icon as IconName));
+labelKeys();
+for (const el of document.querySelectorAll<HTMLElement>('[data-this-computer]')) el.textContent = thisComputer;
 
 // ---- navigation: one pane at a time, like System Settings ----------------------
 
@@ -279,7 +283,7 @@ function renderShortcuts() {
           cap.classList.toggle('recording', recording);
           cap.classList.toggle('empty', !item.keys);
           cap.textContent = recording ? 'Press keys…' : item.keys || 'None';
-          cap.title = recording ? 'Esc cancels · ⌫ removes the shortcut' : 'Click to record a new shortcut';
+          cap.title = recording ? `Esc cancels · ${displayKeys('Backspace')} removes the shortcut` : 'Click to record a new shortcut';
           cap.addEventListener('click', () => void startRecording(recording ? undefined : item.id));
           actions.append(cap);
         }
@@ -305,7 +309,8 @@ api.onKey(async (key) => {
   if (key.code === 'Escape' && !key.shift && !key.control && !key.alt && !key.meta) return startRecording(undefined);
   const removing = (key.code === 'Backspace' || key.code === 'Delete') && !key.shift && !key.control && !key.alt && !key.meta;
   const keys = removing ? null : acceleratorFor(key);
-  if (keys === undefined) return showNotice('Use at least one of ⌘ ⌃ ⌥ with a key, or a function key.');
+  // Super isn't offered on Linux: the window manager has it.
+  if (keys === undefined) return showNotice(isMac ? 'Use at least one of ⌘ ⌃ ⌥ with a key, or a function key.' : 'Use Ctrl or Alt with a key, or a function key.');
   await startRecording(undefined);
   applyShortcuts(await api.set({ shortcut: { id, keys } }));
 });

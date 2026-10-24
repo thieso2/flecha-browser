@@ -57,6 +57,11 @@ body {
   flex: none;
 }
 
+/* On Linux the compositor or Chromium's own frame draws the window controls, outside the page. */
+[data-platform='linux'] .traffic-lights {
+  display: none;
+}
+
 /* In fullscreen the traffic lights aren't in the toolbar (patch 0039). */
 @media (display-mode: fullscreen) {
   .traffic-lights {

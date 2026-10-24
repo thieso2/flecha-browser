@@ -1,5 +1,7 @@
 import { ICONS, type IconName } from './icons.js';
 import type { FlechinhaApi, FlechinhaState } from '../../shared/types';
+import { platform, primaryModifier } from '../lib/platform.js';
+import { defaultKeys, displayKeys, labelKeys, type ShortcutId } from '../lib/shortcuts.js';
 
 declare global {
   interface Window {
@@ -33,6 +35,15 @@ function icon(name: IconName) {
 }
 
 for (const el of document.querySelectorAll<HTMLElement>('i[data-icon]')) el.replaceWith(icon(el.dataset.icon as IconName));
+document.documentElement.dataset.platform = platform;
+labelKeys();
+
+/** A tooltip's keys. A Flechinha has no Store, so these are the defaults. */
+const hint = (id: ShortcutId) => displayKeys(defaultKeys(id));
+back.title = `Back  ${hint('back')}`;
+forward.title = `Forward  ${hint('forward')}`;
+reload.title = `Reload  ${hint('reload')}`;
+copy.title = `Copy link  ${hint('copyLink')}`;
 
 /** What the address shows: the site, quieter for the URL schemes people don't type. */
 function siteOf(url: string) {
@@ -70,17 +81,17 @@ function render(s: FlechinhaState) {
   forward.disabled = !s.canGoForward;
   reload.disabled = empty;
   reload.replaceChildren(icon(s.loading ? 'close' : 'reload'));
-  reload.title = s.loading ? 'Stop' : 'Reload  ⌘R';
+  reload.title = s.loading ? 'Stop' : `Reload  ${hint('reload')}`;
   copy.disabled = empty;
   openInFlecha.disabled = empty;
   const space = `${s.space.emoji ? s.space.emoji + ' ' : ''}${s.space.name}`;
-  openInFlecha.title = `Move this page to ${space} as a tab  ⌘O`;
+  openInFlecha.title = `Move this page to ${space} as a tab  ${displayKeys('CmdOrCtrl+O')}`;
 
   address.classList.toggle('loading', s.loading);
   $('host').textContent = siteOf(s.url);
   const title = s.title && s.title !== s.url ? s.title : '';
   $('page-title').textContent = title;
-  show.title = `${s.url}\nEdit address  ⌘L`;
+  show.title = `${s.url}\nEdit address  ${hint('openLocation')}`;
   siteIcon(s);
 
   if (empty && !editing) startEditing();
@@ -131,7 +142,7 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault();
     if (editing && state?.url) return input.blur();
     api.close();
-  } else if (e.metaKey && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'o') {
+  } else if (e[primaryModifier] && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'o') {
     e.preventDefault();
     if (state?.url) api.openInFlecha();
   }

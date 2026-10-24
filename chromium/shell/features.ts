@@ -10,6 +10,7 @@ import type { Store } from '../shared/store';
 import type { LocalServer } from '../shared/types';
 import type { BoostKind } from './lib/boostFiles';
 import { describe as describeEnvironment } from './lib/environments';
+import { displayKeys, keysFor } from './lib/shortcuts';
 import { broadcast, handle, run } from './hub';
 import * as boosts from './features/boosts';
 import { consoleErrors, watchConsoleErrors } from './features/consoleErrors';
@@ -115,7 +116,8 @@ export function registerFeatures(ctx: FeaturesContext): Features {
         if (tab?.active) break;
         await new Promise((r) => setTimeout(r, 50));
       }
-      if (!run('openDevTools', { console: true })) broadcast('flash', 'Press ⌥⌘I for the console');
+      const devTools = displayKeys(keysFor(store.state, 'devTools'));
+      if (!run('openDevTools', { console: true })) broadcast('flash', devTools ? `Press ${devTools} for the console` : 'Open Developer Tools for the console');
     },
   });
 

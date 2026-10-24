@@ -1,6 +1,7 @@
 import type { PinnedNode, TabPlacement, TabsEdit, TabsView } from '../../shared/types';
 import type { IconName } from './icons.js';
 import { SPACE_COLORS, SPACE_EMOJIS } from './spaceChoices.js';
+import { isMac, primaryModifier } from '../lib/platform.js';
 
 /**
  * Settings → Tabs & Spaces: favorites and every Space's pinned tree and Today tabs in one
@@ -482,12 +483,12 @@ export function setupTabsPane(icon: (name: IconName) => SVGSVGElement) {
     selectionCount.textContent = folder ? '1 folder' : plural(tabs, 'tab');
   }
 
-  function select(key: string, e: { metaKey?: boolean; shiftKey?: boolean }) {
+  function select(key: string, e: { metaKey?: boolean; ctrlKey?: boolean; shiftKey?: boolean }) {
     const isTab = key.startsWith('t:');
     if (isTab && e.shiftKey && anchor?.startsWith('t:')) {
       const [a, b] = [order.indexOf(anchor), order.indexOf(key)].sort((x, y) => x - y);
       selected = new Set(order.slice(a, b + 1).filter((k) => k.startsWith('t:')));
-    } else if (isTab && e.metaKey) {
+    } else if (isTab && e[primaryModifier]) {
       if (selectedFolder()) selected.clear();
       if (selected.has(key)) selected.delete(key);
       else selected.add(key);
@@ -531,7 +532,7 @@ export function setupTabsPane(icon: (name: IconName) => SVGSVGElement) {
     if (target.closest('button, input')) return;
     const row = target.closest<HTMLElement>('.tm-row[data-key]');
     if (row) select(row.dataset.key!, e);
-    else if (!e.metaKey && !e.shiftKey) clearSelection();
+    else if (!e[primaryModifier] && !e.shiftKey) clearSelection();
   });
 
   tree.addEventListener('dblclick', (e) => {
@@ -587,14 +588,14 @@ export function setupTabsPane(icon: (name: IconName) => SVGSVGElement) {
 
   document.addEventListener('keydown', (e) => {
     if (pane.hidden || editing || spaceEditor) return;
-    if (e.metaKey && e.key === 'f') {
+    if (e[primaryModifier] && e.key === 'f') {
       e.preventDefault();
       search.focus();
       search.select();
       return;
     }
     if ((e.target as HTMLElement).closest('input, textarea, select')) return;
-    if (e.metaKey && e.key === 'a') {
+    if (e[primaryModifier] && e.key === 'a') {
       e.preventDefault();
       selected = new Set(order.filter((k) => k.startsWith('t:')));
       updateSelection();
@@ -833,7 +834,7 @@ export function setupTabsPane(icon: (name: IconName) => SVGSVGElement) {
       name.addEventListener('change', () => name!.value.trim() && update({ name: name!.value }));
       name.addEventListener('keydown', (e) => e.key === 'Enter' && name!.blur());
       // The macOS emoji picker types into this field; keep its last emoji.
-      emoji.addEventListener('focus', () => void api.showEmojiPanel());
+      if (isMac) emoji.addEventListener('focus', () => void api.showEmojiPanel());
       emoji.addEventListener('input', () => {
         const chars = [...emoji!.value.trim()];
         void update({ emoji: chars.slice(-1).join('') });
