@@ -1,0 +1,29 @@
+diff --git a/chrome/BUILD.gn b/chrome/BUILD.gn
+--- a/chrome/BUILD.gn
++++ b/chrome/BUILD.gn
+@@ -160,6 +160,15 @@
+   assert_no_deps = [ "//chrome/installer/util:strings" ]
+ }
+ 
++# Flecha: on Linux, chrome::DIR_RESOURCES is the resources folder beside the
++# executable (chrome_paths.cc), so the shell goes to resources/flecha-shell.
++if (is_linux && flecha_shell_dir != "") {
++  copy("flecha_shell_resources") {
++    sources = [ flecha_shell_dir ]
++    outputs = [ "$root_out_dir/resources/flecha-shell" ]
++  }
++}
++
+ if (!is_android && !is_mac) {
+   group("chrome") {
+     public_deps = [
+@@ -351,6 +360,9 @@
+         "//chrome/installer/util:with_no_strings",
+         "//content/public/app",
+       ]
++      if (is_linux && flecha_shell_dir != "") {
++        data_deps += [ ":flecha_shell_resources" ]
++      }
+ 
+       public_deps = [
+         # Needs to be public for installer to consume files from

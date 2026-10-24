@@ -1,0 +1,29 @@
+diff --git a/chrome/browser/ui/browser_view_prefs.cc b/chrome/browser/ui/browser_view_prefs.cc
+--- a/chrome/browser/ui/browser_view_prefs.cc
++++ b/chrome/browser/ui/browser_view_prefs.cc
+@@ -8,21 +8,15 @@
+ #include "chrome/common/pref_names.h"
+ #include "components/pref_registry/pref_registry_syncable.h"
+ 
+-#if BUILDFLAG(IS_OZONE)
+-#include "ui/ozone/public/ozone_platform.h"
+-#endif
+-
+ namespace {
+ 
+ #if BUILDFLAG(IS_LINUX)
+ bool GetCustomFramePrefDefault() {
+-#if BUILDFLAG(IS_OZONE)
+-  return ui::OzonePlatform::GetInstance()
+-      ->GetPlatformProperties()
+-      .custom_frame_pref_default;
+-#else
++  // Flecha: the shell's frame page draws the window, so ask the compositor
++  // for its own decorations, which tiling compositors like Hyprland leave
++  // out. Where the compositor has none, Chromium draws its frame anyway
++  // (BrowserNativeWidgetAuraLinux::UseCustomFrame()).
+   return false;
+-#endif  // BUILDFLAG(IS_OZONE)
+ }
+ #endif
+ 

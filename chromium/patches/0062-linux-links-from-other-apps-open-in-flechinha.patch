@@ -1,0 +1,78 @@
+diff --git a/chrome/browser/chrome_browser_main.cc b/chrome/browser/chrome_browser_main.cc
+--- a/chrome/browser/chrome_browser_main.cc
++++ b/chrome/browser/chrome_browser_main.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/chrome_browser_main.h"
+ 
++#include <algorithm>
+ #include <memory>
+ #include <string>
+ #include <tuple>
+@@ -202,7 +203,9 @@
+ #endif  // BUILDFLAG(IS_CHROMEOS)
+ 
+ #if BUILDFLAG(IS_LINUX)
++#include "chrome/browser/extensions/api/flecha_private/flecha_private_api.h"
+ #include "chrome/browser/first_run/upgrade_util_linux.h"
++#include "chrome/browser/ui/startup/startup_tab_provider.h"
+ #include "chrome/browser/ui/views/chrome_browser_main_extra_parts_views_linux.h"
+ #endif
+ 
+@@ -537,6 +540,42 @@
+ #endif
+ 
+ #if BUILDFLAG(ENABLE_PROCESS_SINGLETON)
++#if BUILDFLAG(IS_LINUX)
++// Flecha: links from other apps (xdg-open, `flecha <url>`) reach the running
++// browser here; they open in a Flechinha while Flecha's window is up, as
++// app_controller_mac.mm does on macOS. Returns whether they did.
++bool OpenLinksInFlechinha(const base::CommandLine& command_line,
++                          const base::FilePath& current_directory,
++                          const StartupProfilePathInfo& profile_path_info) {
++  if (profile_path_info.mode != StartupProfileMode::kBrowserWindow ||
++      command_line.HasSwitch(switches::kIncognito) ||
++      command_line.HasSwitch(switches::kApp) ||
++      command_line.HasSwitch(switches::kAppId)) {
++    return false;
++  }
++  Profile* profile = g_browser_process->profile_manager()->GetProfileByPath(
++      profile_path_info.path);
++  if (!profile) {
++    return false;
++  }
++  const StartupTabs tabs = StartupTabProviderImpl().GetCommandLineTabs(
++      command_line, current_directory, profile);
++  if (tabs.empty() ||
++      std::ranges::any_of(tabs, &StartupTab::is_untrusted_launch)) {
++    return false;
++  }
++  // Whether links open in a Flechinha is the same for every link, so the
++  // first one decides for the rest.
++  if (!extensions::MaybeOpenLinkInFlechinha(profile, tabs.front().url)) {
++    return false;
++  }
++  for (size_t i = 1; i < tabs.size(); ++i) {
++    extensions::MaybeOpenLinkInFlechinha(profile, tabs[i].url);
++  }
++  return true;
++}
++#endif  // BUILDFLAG(IS_LINUX)
++
+ void ProcessSingletonNotificationCallbackImpl(
+     base::CommandLine command_line,
+     const base::FilePath& current_directory) {
+@@ -562,6 +601,13 @@
+   CHECK_NE(startup_profile_path_info.mode, StartupProfileMode::kError,
+            base::NotFatalUntil::M162);
+ 
++#if BUILDFLAG(IS_LINUX)
++  if (OpenLinksInFlechinha(command_line, current_directory,
++                           startup_profile_path_info)) {
++    return;
++  }
++#endif
++
+   StartupBrowserCreator::ProcessCommandLineAlreadyRunning(
+       command_line, current_directory, startup_profile_path_info);
+ 

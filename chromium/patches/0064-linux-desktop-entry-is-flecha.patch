@@ -1,0 +1,28 @@
+diff --git a/chrome/browser/shell_integration_linux.cc b/chrome/browser/shell_integration_linux.cc
+--- a/chrome/browser/shell_integration_linux.cc
++++ b/chrome/browser/shell_integration_linux.cc
+@@ -581,7 +581,8 @@
+ #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+   return "google-chrome";
+ #else  // BUILDFLAG(CHROMIUM_BRANDING)
+-  return "chromium-browser";
++  // Flecha: the icon the package installs into the hicolor theme.
++  return "flecha";
+ #endif
+ }
+ 
+diff --git a/chrome/common/channel_info_posix.cc b/chrome/common/channel_info_posix.cc
+--- a/chrome/common/channel_info_posix.cc
++++ b/chrome/common/channel_info_posix.cc
+@@ -148,7 +148,10 @@
+   if (name.has_value() && !name.value().empty()) {
+     return name.value();
+   }
+-  return "chromium-browser.desktop";
++  // Flecha: its desktop entry, which is also the window's Wayland app_id and
++  // X11 class (shell_integration_linux.cc), for default-browser checks and
++  // compositor window rules.
++  return "flecha.desktop";
+ #endif
+ }
+ #endif  // BUILDFLAG(IS_LINUX)
