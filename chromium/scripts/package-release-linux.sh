@@ -53,6 +53,13 @@ for f in "${optional[@]}"; do
 done
 # Only the locales' .pak files; the build leaves .info files beside them.
 find "$stage/locales" -type f ! -name '*.pak' -delete
+# Chromium looks for the setuid sandbox as chrome-sandbox beside the executable
+# (setuid_sandbox_host.cc); the PKGBUILD makes it setuid root.
+if [ ! -e "$built/chrome_sandbox" ]; then
+  echo "error: the build has no chrome_sandbox" >&2
+  exit 1
+fi
+cp -a "$built/chrome_sandbox" "$stage/chrome-sandbox"
 
 echo "== shell"
 shell_dist="$here/shell/dist"

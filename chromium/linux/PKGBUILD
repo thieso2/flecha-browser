@@ -8,7 +8,8 @@ pkgdesc='An Arc-style browser for developers, built on Chromium'
 arch=('x86_64')
 url='https://github.com/lucianodiisouza/flecha-browser'
 license=('MIT' 'BSD-3-Clause')
-depends=('alsa-lib' 'at-spi2-core' 'gtk3' 'hicolor-icon-theme' 'libcups' 'libxss' 'nss' 'ttf-liberation' 'xdg-utils')
+depends=('alsa-lib' 'at-spi2-core' 'dbus' 'expat' 'gtk3' 'hicolor-icon-theme' 'libcups' 'libpulse' 'libva'
+  'libxkbcommon' 'libxss' 'mesa' 'nspr' 'nss' 'pango' 'systemd-libs' 'ttf-liberation' 'xdg-utils')
 optdepends=(
   'nodejs: importing from other browsers and the coding-agent MCP server (Node 22.5+)'
   'kwallet: KDE password storage'
@@ -24,6 +25,9 @@ sha256sums=('@SHA256@')
 package() {
   install -d "$pkgdir/opt"
   cp -a "$srcdir/flecha" "$pkgdir/opt/flecha"
+
+  # The setuid sandbox, for kernels without unprivileged user namespaces (linux-hardened).
+  chmod 4755 "$pkgdir/opt/flecha/chrome-sandbox"
 
   install -d "$pkgdir/usr/bin"
   ln -s /opt/flecha/flecha "$pkgdir/usr/bin/flecha"

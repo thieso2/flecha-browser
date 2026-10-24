@@ -25,6 +25,14 @@ else
 fi
 export PATH="${DEPOT_TOOLS:-$FLECHA_DISK/depot_tools}:$PATH"
 
+# mac_only: stops a script that packages, signs or publishes the macOS app.
+mac_only() {
+  if [ "$flecha_os" != mac ]; then
+    echo "error: $(basename "$0") is macOS only" >&2
+    exit 1
+  fi
+}
+
 # sha256 <file>...: one digest of everything read, on both systems (Arch keeps shasum off PATH).
 sha256() {
   if command -v sha256sum >/dev/null; then sha256sum "$@"; else shasum -a 256 "$@"; fi

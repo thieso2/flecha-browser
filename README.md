@@ -98,6 +98,7 @@ On Omarchy:
 - Make Flecha the default browser with `xdg-settings set default-web-browser flecha.desktop`. Omarchy's browser key and links from other apps then open Flecha; links from other apps open in a Flechinha while Flecha's window is up, as on macOS.
 - Flecha asks Hyprland for server-side decorations, so the window has no title bar of Chromium's and Hyprland's borders and rounding apply.
 - Flags go in `~/.config/flecha-flags.conf`, one or more per line, like `chromium-flags.conf`. Omarchy's Chromium flags suit Flecha too, except `--load-extension` (Omarchy's extensions are for Chromium): `grep -v load-extension ~/.config/chromium-flags.conf > ~/.config/flecha-flags.conf`. `--password-store=gnome-libsecret` keeps saved passwords in the keyring.
+- On a compositor without server-side decorations (GNOME's Mutter), Chromium draws its own title bar above Flecha's frame. Under Xwayland the window class is `Flecha`; on Wayland the app_id is `flecha`.
 - To tile Flecha like Omarchy's other Chromium browsers, add `o.window("flecha", { tag = "+chromium-based-browser" })` to `~/.config/hypr/hyprland.lua`.
 - Shortcuts follow Linux conventions: Ctrl where macOS uses ⌘, Alt+1 to Alt+9 for Spaces, and Alt+Left and Alt+Right for back and forward. Where Ctrl would take one of Chromium's own keys, Flecha's moves: New Space is Alt+Shift+N, split view Ctrl+Alt+= and Ctrl+Alt+-, Copy link Ctrl+Shift+L. Super is left to Hyprland. Ctrl+/ lists them all.
 

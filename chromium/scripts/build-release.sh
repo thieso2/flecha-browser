@@ -161,7 +161,8 @@ step "autoninja -C $out chrome"
 if [ "$flecha_os" = mac ]; then
   caffeinate -i autoninja -C "$out" chrome ${ninja_args[@]+"${ninja_args[@]}"}
 else
-  autoninja -C "$out" chrome ${ninja_args[@]+"${ninja_args[@]}"}
+  # chrome_sandbox, the setuid sandbox package-release-linux.sh ships, is a target of its own.
+  autoninja -C "$out" chrome chrome_sandbox ${ninja_args[@]+"${ninja_args[@]}"}
 fi
 
 if [ "$package" = 1 ]; then

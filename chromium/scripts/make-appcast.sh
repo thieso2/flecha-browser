@@ -18,6 +18,7 @@
 set -euo pipefail
 here="$(cd "$(dirname "$0")/.." && pwd)"
 . "$here/scripts/env.sh"
+mac_only
 
 if [ $# -lt 1 ] || [ $# -gt 2 ]; then
   echo "usage: $0 <Flecha-<version>.dmg> [<folder>]" >&2

@@ -31,6 +31,7 @@
 set -euo pipefail
 here="$(cd "$(dirname "$0")/.." && pwd)"
 . "$here/scripts/env.sh"
+mac_only
 
 dmg="${FLECHA_DMG:-0}"
 for arg in "$@"; do

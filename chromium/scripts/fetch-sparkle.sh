@@ -16,6 +16,7 @@
 set -euo pipefail
 here="$(cd "$(dirname "$0")/.." && pwd)"
 . "$here/scripts/env.sh"
+mac_only
 
 sparkle_version="2.10.0"
 sparkle_url="https://github.com/sparkle-project/Sparkle/releases/download/$sparkle_version/Sparkle-$sparkle_version.tar.xz"

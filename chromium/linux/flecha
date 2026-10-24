@@ -16,6 +16,6 @@ for file in /etc/flecha-flags.conf "$config/flecha-flags.conf"; do
   done <"$file"
 done
 
-# Chromium relaunches itself (after an update of its flags, say) through this script.
+# Chromium writes this script, not the bare executable, into the shortcuts it makes.
 export CHROME_WRAPPER="$here/flecha"
 exec "$here/chrome" "${flags[@]}" "$@"
