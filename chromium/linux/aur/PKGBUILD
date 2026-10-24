@@ -7,6 +7,8 @@
 
 pkgname=flecha-git
 _chromium_ver=158.0.8121.0
+# The Node this Chromium pins (third_party/node/update_node_binaries); Arch's is newer.
+_node_ver=24.12.0
 pkgver=0.1.0.r0.g0000000
 pkgrel=1
 pkgdesc='An Arc-style browser for developers, built on Chromium'
@@ -15,7 +17,7 @@ url='https://github.com/thieso2/flecha-browser'
 license=('MIT' 'BSD-3-Clause')
 depends=('alsa-lib' 'at-spi2-core' 'dbus' 'expat' 'gtk3' 'hicolor-icon-theme' 'libcups' 'libpulse' 'libva'
   'libxkbcommon' 'libxss' 'mesa' 'nspr' 'nss' 'pango' 'systemd-libs' 'ttf-liberation' 'xdg-utils')
-makedepends=('git' 'gperf' 'java-runtime-headless' 'ninja' 'nodejs' 'npm' 'python')
+makedepends=('git' 'go' 'gperf' 'java-runtime-headless' 'ninja' 'nodejs' 'npm' 'python')
 optdepends=(
   'nodejs: importing from other browsers and the coding-agent MCP server (Node 22.5+)'
   'libsecret: GNOME keyring password storage'
@@ -25,9 +27,11 @@ provides=('flecha')
 conflicts=('flecha' 'flecha-bin')
 options=('!lto' '!strip' '!debug')
 source=("https://commondatastorage.googleapis.com/chromium-browser-official/chromium-$_chromium_ver-lite.tar.xz"
-  "flecha::git+https://github.com/thieso2/flecha-browser.git#branch=linux-port")
+  "flecha::git+https://github.com/thieso2/flecha-browser.git#branch=linux-port"
+  "https://nodejs.org/dist/v$_node_ver/node-v$_node_ver-linux-x64.tar.xz")
 sha256sums=('8b34bed64f71c0b206f7a96aa2e9bdfd869d119b7223dfb51262857bf1918051'
-  'SKIP')
+  'SKIP'
+  'bdebee276e58d0ef5448f3d5ac12c67daa963dd5e0a9bb621a53d1cefbc852fd')
 
 pkgver() {
   cd flecha
@@ -57,11 +61,14 @@ prepare() {
   mkdir -p flecha
   cp -a ../flecha/chromium/shell/dist flecha/shell
 
-  # Tools the tarball leaves out: the system's Node and Java, and Chromium's own clang,
-  # Rust and sysroot, the toolchain its Linux releases are built and tested with.
-  mkdir -p third_party/node/linux/node-linux-x64/bin third_party/jdk/current/bin
-  ln -sf /usr/bin/node third_party/node/linux/node-linux-x64/bin/node
+  # Tools the tarball leaves out: the Node it pins, the system's Java and Go, and
+  # Chromium's own clang, Rust and sysroot, the toolchain its Linux releases are built
+  # and tested with.
+  mkdir -p third_party/node/linux third_party/jdk/current/bin \
+    third_party/dawn/tools/golang/linux-amd64/bin
+  ln -sfn "$srcdir/node-v$_node_ver-linux-x64" third_party/node/linux/node-linux-x64
   ln -sf /usr/bin/java third_party/jdk/current/bin/java
+  ln -sf /usr/bin/go third_party/dawn/tools/golang/linux-amd64/bin/go
   python3 tools/clang/scripts/update.py
   python3 tools/rust/update_rust.py
   python3 build/linux/sysroot_scripts/install-sysroot.py --arch=amd64

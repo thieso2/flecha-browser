@@ -7,6 +7,7 @@ pkgbase = flecha-git
 	license = MIT
 	license = BSD-3-Clause
 	makedepends = git
+	makedepends = go
 	makedepends = gperf
 	makedepends = java-runtime-headless
 	makedepends = ninja
@@ -42,7 +43,9 @@ pkgbase = flecha-git
 	options = !debug
 	source = https://commondatastorage.googleapis.com/chromium-browser-official/chromium-158.0.8121.0-lite.tar.xz
 	source = flecha::git+https://github.com/thieso2/flecha-browser.git#branch=linux-port
+	source = https://nodejs.org/dist/v24.12.0/node-v24.12.0-linux-x64.tar.xz
 	sha256sums = 8b34bed64f71c0b206f7a96aa2e9bdfd869d119b7223dfb51262857bf1918051
 	sha256sums = SKIP
+	sha256sums = bdebee276e58d0ef5448f3d5ac12c67daa963dd5e0a9bb621a53d1cefbc852fd
 
 pkgname = flecha-git
