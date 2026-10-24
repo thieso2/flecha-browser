@@ -31,7 +31,7 @@
 #
 # On Linux the same steps build out/Release/chrome from chromium/build/linux-release.gn,
 # with no Sparkle (the package manager updates Flecha there) and no app version in args.gn,
-# then package-release-linux.sh makes flecha-<version>-linux-x64.tar.xz. --dmg is macOS only.
+# then package-release-linux.sh makes flecha-<version>-1-linux-x64.tar.xz. --dmg is macOS only.
 #
 # Dev builds (build.sh, out/Dev) share the checkout: don't run both at once. The release app
 # uses the default profile folder, ~/Library/Application Support/Flecha Browser.

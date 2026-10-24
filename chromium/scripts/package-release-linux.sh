@@ -1,7 +1,8 @@
 #!/bin/bash
 # Packages the Linux release build (out/Release, from build-release.sh) as
-# out/Release/flecha-release/flecha-<version>-linux-x64.tar.xz, with a PKGBUILD beside it:
-# `makepkg -si` in that folder installs Flecha on Arch Linux and Omarchy.
+# out/Release/flecha-release/flecha-<version>-<pkgrel>-linux-x64.tar.xz, with a PKGBUILD beside
+# it: `makepkg -si` in that folder installs Flecha on Arch Linux and Omarchy. The pkgrel is
+# $FLECHA_PKGREL (CI sets its run number), 1 by default.
 #
 #   chromium/scripts/package-release-linux.sh
 #   chromium/scripts/package-release-linux.sh --stage <dir>  # only lay flecha/ out in <dir>
@@ -30,7 +31,8 @@ fi
 built="$release_out"
 release="${FLECHA_RELEASE_DIR:-$release_out/flecha-release}"
 version="$(node -p 'require(process.argv[1]).version' "$root/package.json")"
-name="flecha-$version-linux-x64"
+pkgrel="${FLECHA_PKGREL:-1}"
+name="flecha-$version-$pkgrel-linux-x64"
 stage="$release/stage/flecha"
 stage_only=0
 if [ "${1:-}" = --stage ]; then
@@ -133,6 +135,7 @@ echo "== $name.tar.xz"
 tarball="$release/$name.tar.xz"
 tar -C "$release/stage" --owner=0 --group=0 -cJf "$tarball" flecha
 sum="$(sha256 "$tarball" | cut -d' ' -f1)"
-sed -e "s/@VERSION@/$version/" -e "s/@SHA256@/$sum/" "$here/linux/PKGBUILD" >"$release/PKGBUILD"
+sed -e "s/@VERSION@/$version/" -e "s/@PKGREL@/$pkgrel/" -e "s/@SHA256@/$sum/" "$here/linux/PKGBUILD" \
+  >"$release/PKGBUILD"
 echo "made $tarball"
 echo "and $release/PKGBUILD; install with: (cd $release && makepkg -si)"

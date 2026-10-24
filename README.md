@@ -160,7 +160,7 @@ chromium/scripts/run.sh                # launch out/Dev/chrome with its own prof
 chromium/scripts/build-release.sh      # out/Release from chromium/build/linux-release.gn, then package-release-linux.sh
 ```
 
-`package-release-linux.sh` packs `out/Release` into `flecha-<version>-linux-x64.tar.xz` (Chromium's runtime files, the shell, the launcher, desktop entry, icons and the native host) and writes a `PKGBUILD` beside it. The Linux patches are numbered from 0060: the profile and native-host folders, compositor decorations, links from other apps, the shell in release builds, and the `flecha` desktop entry and window class.
+`package-release-linux.sh` packs `out/Release` into `flecha-<version>-<pkgrel>-linux-x64.tar.xz` (Chromium's runtime files, the shell, the launcher, desktop entry, icons and the native host) and writes a `PKGBUILD` beside it. The Linux patches are numbered from 0060: the profile and native-host folders, compositor decorations, links from other apps, the shell in release builds, and the `flecha` desktop entry and window class.
 
 ## Repo layout
 

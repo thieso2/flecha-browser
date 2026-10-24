@@ -1,12 +1,14 @@
 # Flecha for Arch Linux (and Omarchy), from the tarball package-release-linux.sh makes.
-# That script copies this file beside the tarball with pkgver and the checksum filled in,
-# so `makepkg -si` there installs it.
+# That script copies this file beside the tarball with pkgver, pkgrel and the checksum filled
+# in, so `makepkg -si` there installs it from the tarball beside it. CI publishes the tarball
+# as a GitHub release (.github/workflows/linux-package.yml), where this PKGBUILD, as the AUR's
+# flecha-bin, downloads it from.
 pkgname=flecha-bin
 pkgver=@VERSION@
-pkgrel=1
+pkgrel=@PKGREL@
 pkgdesc='An Arc-style browser for developers, built on Chromium'
 arch=('x86_64')
-url='https://github.com/lucianodiisouza/flecha-browser'
+url='https://github.com/thieso2/flecha-browser'
 license=('MIT' 'BSD-3-Clause')
 depends=('alsa-lib' 'at-spi2-core' 'dbus' 'expat' 'gtk3' 'hicolor-icon-theme' 'libcups' 'libpulse' 'libva'
   'libxkbcommon' 'libxss' 'mesa' 'nspr' 'nss' 'pango' 'systemd-libs' 'ttf-liberation' 'xdg-utils')
@@ -19,7 +21,7 @@ optdepends=(
 provides=('flecha')
 conflicts=('flecha')
 options=('!strip' '!debug')
-source=("flecha-$pkgver-linux-x64.tar.xz")
+source=("$url/releases/download/linux-v$pkgver-$pkgrel/flecha-$pkgver-$pkgrel-linux-x64.tar.xz")
 sha256sums=('@SHA256@')
 
 package() {

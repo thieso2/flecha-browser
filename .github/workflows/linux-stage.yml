@@ -1,0 +1,93 @@
+# One stage of linux-package.yml: restores the previous stage's build folder, builds for at
+# most four and a half hours (chromium/linux/ci/stage.sh) and saves the folder for the next
+# stage, or uploads the packages when the build is complete. Chromium takes longer than one
+# GitHub-hosted job may run, hence the stages.
+name: Linux build stage
+
+on:
+  workflow_call:
+    inputs:
+      first:
+        description: Whether this stage starts the build (no saved folder to restore)
+        type: boolean
+        required: true
+    outputs:
+      done:
+        description: '"true" when this stage finished the build and uploaded flecha-package'
+        value: ${{ jobs.build.outputs.done }}
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 355
+    outputs:
+      done: ${{ steps.build.outputs.done }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # makepkg clones this checkout, which a shallow clone can't be cloned from.
+          fetch-depth: 0
+
+      - name: Make room
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache \
+            /usr/local/share/boost /usr/share/swift
+          sudo docker image prune --all --force >/dev/null
+          # The build folder (about 30 GB) goes on whichever disk has more room; the saved
+          # state (about 10 GB) on the other one.
+          if [ "$(df --output=avail /mnt | tail -1)" -gt "$(df --output=avail / | tail -1)" ]; then
+            work=/mnt/flecha; state="$RUNNER_TEMP/state"
+          else
+            work="$RUNNER_TEMP/flecha"; state=/mnt/flecha-state
+          fi
+          sudo mkdir -p "$work" "$state"
+          sudo chown "$USER" "$state"
+          echo "WORK=$work" >>"$GITHUB_ENV"
+          echo "STATE=$state" >>"$GITHUB_ENV"
+          df -h / /mnt
+
+      - name: Restore the build folder
+        if: ${{ !inputs.first }}
+        uses: actions/download-artifact@v4
+        with:
+          name: flecha-build-state
+          path: ${{ env.STATE }}
+
+      - name: Build
+        id: build
+        run: |
+          if [ -n "$(ls -A "$STATE")" ]; then
+            cat "$STATE"/part-* | sudo tar --format=posix -I zstd -xpf - -C "$WORK"
+            rm -f "$STATE"/part-*
+          fi
+          sudo docker run --rm -v "$GITHUB_WORKSPACE:/repo:ro" -v "$WORK:/build" \
+            -e FLECHA_COMMIT="$GITHUB_SHA" -e FLECHA_PKGREL="$GITHUB_RUN_NUMBER" \
+            archlinux:latest /repo/chromium/linux/ci/stage.sh 270
+          if [ -f "$WORK/done" ]; then
+            echo "done=true" >>"$GITHUB_OUTPUT"
+          else
+            echo "done=false" >>"$GITHUB_OUTPUT"
+            # pax keeps nanosecond file times, so ninja sees every output as up to date.
+            sudo tar --format=posix -I 'zstd -T0 -3' -cf - -C "$WORK" . | split -b 2000M - "$STATE/part-"
+            ls -lh "$STATE"
+          fi
+          df -h / /mnt
+
+      - name: Save the build folder for the next stage
+        if: steps.build.outputs.done == 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: flecha-build-state
+          path: ${{ env.STATE }}/part-*
+          compression-level: 0
+          retention-days: 1
+          overwrite: true
+
+      - name: Upload the packages
+        if: steps.build.outputs.done == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: flecha-package
+          path: ${{ env.WORK }}/release/
+          include-hidden-files: true
+          compression-level: 0
