@@ -4,6 +4,10 @@
 # `makepkg -si` in that folder installs Flecha on Arch Linux and Omarchy.
 #
 #   chromium/scripts/package-release-linux.sh
+#   chromium/scripts/package-release-linux.sh --stage <dir>  # only lay flecha/ out in <dir>
+#
+# --stage is for packages that build Flecha themselves (chromium/linux/aur/PKGBUILD): it
+# fills <dir> as /opt/flecha and makes no tarball.
 #
 # The tarball holds one folder, flecha/, laid out as it is installed at /opt/flecha:
 #   - Chromium's runtime files (the list of chrome/installer/linux/BUILD.gn), with the
@@ -28,12 +32,24 @@ release="${FLECHA_RELEASE_DIR:-$release_out/flecha-release}"
 version="$(node -p 'require(process.argv[1]).version' "$root/package.json")"
 name="flecha-$version-linux-x64"
 stage="$release/stage/flecha"
+stage_only=0
+if [ "${1:-}" = --stage ]; then
+  if [ $# -ne 2 ]; then
+    echo "error: --stage needs one folder" >&2
+    exit 1
+  fi
+  stage="$2"
+  stage_only=1
+elif [ $# -gt 0 ]; then
+  echo "error: unknown argument $1" >&2
+  exit 1
+fi
 
 if [ ! -x "$built/chrome" ]; then
   echo "error: no $built/chrome; build it first (chromium/scripts/build-release.sh)" >&2
   exit 1
 fi
-rm -rf "$release/stage"
+rm -rf "$stage"
 mkdir -p "$stage"
 
 echo "== Chromium"
@@ -107,6 +123,11 @@ cat >"$host/dev.oprimo.flecha.host.json" <<'MANIFEST'
   "allowed_origins": ["chrome-extension://abdiaepfgbbhdjaecjipmaailijaaide/"]
 }
 MANIFEST
+
+if [ "$stage_only" = 1 ]; then
+  echo "staged $stage"
+  exit 0
+fi
 
 echo "== $name.tar.xz"
 tarball="$release/$name.tar.xz"

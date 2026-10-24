@@ -1,0 +1,94 @@
+# Maintainer: Thies <thies@moyn.dev>
+#
+# Flecha for Arch Linux and Omarchy, built from source: Chromium's release tarball plus
+# Flecha's patches, branding and shell, compiled the way Google builds Chromium for Linux
+# (Chromium's own clang, Rust and Debian sysroot, which prepare() fetches with Chromium's
+# scripts). Expect several hours, about 30 GB of disk and 16 GB of memory for the link.
+
+pkgname=flecha-git
+_chromium_ver=158.0.8121.0
+pkgver=0.1.0.r0.g0000000
+pkgrel=1
+pkgdesc='An Arc-style browser for developers, built on Chromium'
+arch=('x86_64')
+url='https://github.com/thieso2/flecha-browser'
+license=('MIT' 'BSD-3-Clause')
+depends=('alsa-lib' 'at-spi2-core' 'dbus' 'expat' 'gtk3' 'hicolor-icon-theme' 'libcups' 'libpulse' 'libva'
+  'libxkbcommon' 'libxss' 'mesa' 'nspr' 'nss' 'pango' 'systemd-libs' 'ttf-liberation' 'xdg-utils')
+makedepends=('git' 'gn' 'gperf' 'java-runtime-headless' 'ninja' 'nodejs' 'npm' 'python')
+optdepends=(
+  'nodejs: importing from other browsers and the coding-agent MCP server (Node 22.5+)'
+  'libsecret: GNOME keyring password storage'
+  'kwallet: KDE password storage'
+)
+provides=('flecha')
+conflicts=('flecha' 'flecha-bin')
+options=('!lto' '!strip' '!debug')
+source=("https://commondatastorage.googleapis.com/chromium-browser-official/chromium-$_chromium_ver-lite.tar.xz"
+  "flecha::git+https://github.com/thieso2/flecha-browser.git#branch=linux-port")
+sha256sums=('8b34bed64f71c0b206f7a96aa2e9bdfd869d119b7223dfb51262857bf1918051'
+  'SKIP')
+
+pkgver() {
+  cd flecha
+  printf '%s.r%s.g%s' "$(sed -n 's/^  "version": "\(.*\)",$/\1/p' package.json)" \
+    "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
+}
+
+prepare() {
+  cd flecha
+  npm ci
+  node chromium/shell/build.mjs
+
+  cd "$srcdir/chromium-$_chromium_ver"
+  # Branding and patches, as chromium/scripts/apply.sh puts them on a git checkout.
+  local theme=chrome/app/theme/chromium
+  cp ../flecha/chromium/branding/BRANDING "$theme/BRANDING"
+  cp ../flecha/chromium/branding/logo/*.png "$theme/"
+  for size in 24 48 64 128 256; do
+    cp "../flecha/chromium/branding/logo/product_logo_$size.png" "$theme/linux/"
+  done
+  local patch
+  for patch in ../flecha/chromium/patches/*.patch; do
+    echo "patch: ${patch##*/}"
+    git apply "$patch"
+  done
+  # The shell, where linux-release.gn's flecha_shell_dir copies it from (patch 0063).
+  mkdir -p flecha
+  cp -a ../flecha/chromium/shell/dist flecha/shell
+
+  # Tools the tarball leaves out: the system's Node and Java, and Chromium's own clang,
+  # Rust and sysroot, the toolchain its Linux releases are built and tested with.
+  mkdir -p third_party/node/linux/node-linux-x64/bin third_party/jdk/current/bin
+  ln -sf /usr/bin/node third_party/node/linux/node-linux-x64/bin/node
+  ln -sf /usr/bin/java third_party/jdk/current/bin/java
+  python3 tools/clang/scripts/update.py
+  python3 tools/rust/update_rust.py
+  python3 build/linux/sysroot_scripts/install-sysroot.py --arch=amd64
+}
+
+build() {
+  cd "chromium-$_chromium_ver"
+  gn gen out/Release --args="$(cat ../flecha/chromium/build/linux-release.gn)"
+  ninja -C out/Release chrome chrome_sandbox
+}
+
+package() {
+  cd flecha
+  CHROMIUM_SRC="$srcdir/chromium-$_chromium_ver" FLECHA_DISK="$srcdir" \
+    chromium/scripts/package-release-linux.sh --stage "$pkgdir/opt/flecha"
+  chmod 4755 "$pkgdir/opt/flecha/chrome-sandbox"
+
+  install -d "$pkgdir/usr/bin"
+  ln -s /opt/flecha/flecha "$pkgdir/usr/bin/flecha"
+  install -Dm644 chromium/linux/flecha.desktop "$pkgdir/usr/share/applications/flecha.desktop"
+  for size in 16 24 48 64 128 256; do
+    install -Dm644 "chromium/branding/logo/product_logo_$size.png" \
+      "$pkgdir/usr/share/icons/hicolor/${size}x$size/apps/flecha.png"
+  done
+  install -Dm644 "$pkgdir/opt/flecha/native-host/dev.oprimo.flecha.host.json" \
+    "$pkgdir/etc/flecha/native-messaging-hosts/dev.oprimo.flecha.host.json"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 "$srcdir/chromium-$_chromium_ver/LICENSE" \
+    "$pkgdir/usr/share/licenses/$pkgname/LICENSE.chromium"
+}
