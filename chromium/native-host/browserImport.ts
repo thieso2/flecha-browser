@@ -6,6 +6,7 @@ import { promisify } from 'node:util';
 import type { DetectedBrowser, HistoryEntry } from '../shared/types';
 import { arcSidebarPath, readArcSidebar, type ArcImport, type ImportNode } from './arcImport';
 import type { BrowserImportData } from '../shared/importApply';
+import { appData, isMac, thisComputer } from './platform';
 
 /**
  * Brings bookmarks and history over from the other browsers on this Mac. Their files are
@@ -43,19 +44,17 @@ interface BrowserSource {
   sidebar?: { exists(): boolean; read(): ArcImport };
 }
 
-/** Electron's appData folder on macOS. */
-const appSupport = (...parts: string[]) => path.join(os.homedir(), 'Library', 'Application Support', ...parts);
-
 // ---- Chromium family -------------------------------------------------------
 
-const CHROMIUM: Array<[id: string, name: string, dir: string]> = [
-  ['chrome', 'Chrome', 'Google/Chrome'],
-  ['brave', 'Brave', 'BraveSoftware/Brave-Browser'],
-  ['edge', 'Edge', 'Microsoft Edge'],
-  ['vivaldi', 'Vivaldi', 'Vivaldi'],
-  ['opera', 'Opera', 'com.operasoftware.Opera'],
-  ['opera-gx', 'Opera GX', 'com.operasoftware.OperaGX'],
-  ['chromium', 'Chromium', 'Chromium'],
+/** Each browser's folder under appData on macOS, and on Linux (undefined where it has no Linux build). */
+const CHROMIUM: Array<[id: string, name: string, mac: string, linux: string | undefined]> = [
+  ['chrome', 'Chrome', 'Google/Chrome', 'google-chrome'],
+  ['brave', 'Brave', 'BraveSoftware/Brave-Browser', 'BraveSoftware/Brave-Browser'],
+  ['edge', 'Edge', 'Microsoft Edge', 'microsoft-edge'],
+  ['vivaldi', 'Vivaldi', 'Vivaldi', 'vivaldi'],
+  ['opera', 'Opera', 'com.operasoftware.Opera', 'opera'],
+  ['opera-gx', 'Opera GX', 'com.operasoftware.OperaGX', undefined],
+  ['chromium', 'Chromium', 'Chromium', 'chromium'],
 ];
 
 function chromiumSource(id: string, name: string, root: string): BrowserSource {
@@ -125,7 +124,7 @@ function chromiumNode(node: any): ImportNode[] {
 /** Arc is Chromium underneath, but its Spaces and pinned tabs live in its own sidebar file. */
 function arcSource(): BrowserSource {
   return {
-    ...chromiumSource('arc', 'Arc', appSupport('Arc', 'User Data')),
+    ...chromiumSource('arc', 'Arc', appData('Arc', 'User Data')),
     sidebar: { exists: () => isFile(arcSidebarPath()), read: () => readArcSidebar() },
   };
 }
@@ -134,7 +133,8 @@ function arcSource(): BrowserSource {
 
 /** Bookmarks and history both live in each profile's places.sqlite. */
 function firefoxSource(): BrowserSource {
-  const root = appSupport('Firefox', 'Profiles');
+  // Firefox on Linux keeps its profiles in ~/.mozilla, not under XDG_CONFIG_HOME.
+  const root = isMac ? appData('Firefox', 'Profiles') : path.join(os.homedir(), '.mozilla', 'firefox');
   return {
     id: 'firefox',
     name: 'Firefox',
@@ -329,13 +329,13 @@ function decodeXml(s: string) {
 
 // ---- detecting and importing -------------------------------------------------
 
+/** Arc and Safari are macOS only. */
 function sources(): BrowserSource[] {
-  return [
-    ...CHROMIUM.map(([id, name, dir]) => chromiumSource(id, name, appSupport(dir))),
-    arcSource(),
-    firefoxSource(),
-    safariSource(),
-  ];
+  const chromium = CHROMIUM.flatMap(([id, name, mac, linux]) => {
+    const dir = isMac ? mac : linux;
+    return dir ? [chromiumSource(id, name, appData(dir))] : [];
+  });
+  return isMac ? [...chromium, arcSource(), firefoxSource(), safariSource()] : [...chromium, firefoxSource()];
 }
 
 /** Browsers on this Mac that have bookmarks or history to bring over. Only checks which files exist. */
@@ -365,7 +365,7 @@ export async function readBrowser(id: string): Promise<BrowserImportData> {
   const result: BrowserImportData = { name: id, bookmarkCount: 0, history: [], warnings: [] };
   const source = sources().find((s) => s.id === id);
   if (!source) {
-    result.warnings.push(`No data from “${id}” was found on this Mac.`);
+    result.warnings.push(`No data from “${id}” was found on ${thisComputer}.`);
     return result;
   }
   result.name = source.name;
