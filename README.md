@@ -83,6 +83,24 @@ chromium/scripts/install-native-host.sh --app /Applications/Flecha.app
 
 Browsers can't read other browsers' files or open a local port, so Flecha ships a small native messaging host (a bundled Node, in the app). The script registers it with Chromium for Flecha's profile folder. It allows only Flecha's own shell extension to talk to it. Run it again if you move the app.
 
+### Linux (Arch and Omarchy)
+
+There are no prebuilt Linux packages yet. Build the release (see [Build from source on Linux](#linux)), then install the package it makes:
+
+```bash
+cd "$CHROMIUM_SRC/out/Release/flecha-release" && makepkg -si
+```
+
+The package installs Flecha in `/opt/flecha`, `flecha` on your `PATH`, a desktop entry, and the native host for every user (it runs with the system's Node, so install `nodejs` for importing and the MCP server). Flecha keeps its profile in `~/.config/flecha-browser`, apart from Chromium's.
+
+On Omarchy:
+
+- Make Flecha the default browser with `xdg-settings set default-web-browser flecha.desktop`. Omarchy's browser key and links from other apps then open Flecha; links from other apps open in a Flechinha while Flecha's window is up, as on macOS.
+- Flecha asks Hyprland for server-side decorations, so the window has no title bar of Chromium's and Hyprland's borders and rounding apply.
+- Flags go in `~/.config/flecha-flags.conf`, one or more per line, like `chromium-flags.conf`. Omarchy's Chromium flags suit Flecha too, except `--load-extension` (Omarchy's extensions are for Chromium): `grep -v load-extension ~/.config/chromium-flags.conf > ~/.config/flecha-flags.conf`. `--password-store=gnome-libsecret` keeps saved passwords in the keyring.
+- To tile Flecha like Omarchy's other Chromium browsers, add `o.window("flecha", { tag = "+chromium-based-browser" })` to `~/.config/hypr/hyprland.lua`.
+- Shortcuts follow Linux conventions: Ctrl where macOS uses ⌘, Alt+1 to Alt+9 for Spaces, and Alt+Left and Alt+Right for back and forward. Where Ctrl would take one of Chromium's own keys, Flecha's moves: New Space is Alt+Shift+N, split view Ctrl+Alt+= and Ctrl+Alt+-, Copy link Ctrl+Shift+L. Super is left to Hyprland. Ctrl+/ lists them all.
+
 ## Build from source
 
 You need:
@@ -118,15 +136,34 @@ chromium/scripts/build-release.sh --dmg
 
 `build-release.sh` builds the shell, applies the patches, stages the shell into the checkout, writes `out/Release/args.gn` from `chromium/build/release.gn`, builds (3 to 6 hours, resumable) and calls `package-release.sh`. That copies the app, adds the native host with its Node, signs everything innermost first (hardened runtime, timestamp and Chromium's entitlements when `FLECHA_SIGN_IDENTITY` is set; ad hoc otherwise), makes the dmg with an installer window, and with `FLECHA_NOTARY_PROFILE` notarizes it and staples the ticket. Releases use `target_cpu = "arm64"` and no proprietary codecs (H.264 and AAC), which need patent licences.
 
+### Linux
+
+The same scripts build on Linux (x86_64). You need:
+
+- an x86_64 Linux machine; Chromium's `install-build-deps.py` covers Debian, Ubuntu and Fedora, and on Arch you install the equivalents by hand (the build compiles against Chromium's own sysroot)
+- depot_tools on your `PATH`, a Chromium checkout at the version Flecha targets (158.0.8121.1 is the one the patches are checked against), about 100 GB of disk and several hours for a first build
+- Node 22.5 or newer and `npm ci` at the repo root
+
+Follow Chromium's [Linux build instructions](https://chromium.googlesource.com/chromium/src/+/main/docs/linux/build_instructions.md) to fetch the checkout and its build dependencies. `env.sh` expects it at `~/flecha/chromium/src` with depot_tools at `~/flecha/depot_tools`; set `CHROMIUM_SRC`, `DEPOT_TOOLS` or `FLECHA_DISK` for another layout.
+
+```bash
+chromium/scripts/build.sh              # first run writes out/Dev/args.gn from chromium/build/linux-dev.gn
+chromium/scripts/run.sh                # launch out/Dev/chrome with its own profile
+chromium/scripts/build-release.sh      # out/Release from chromium/build/linux-release.gn, then package-release-linux.sh
+```
+
+`package-release-linux.sh` packs `out/Release` into `flecha-<version>-linux-x64.tar.xz` (Chromium's runtime files, the shell, the launcher, desktop entry, icons and the native host) and writes a `PKGBUILD` beside it. The Linux patches are numbered from 0060: the profile and native-host folders, compositor decorations, links from other apps, the shell in release builds, and the `flecha` desktop entry and window class.
+
 ## Repo layout
 
 ```
 chromium/
   patches/       the native changes to Chromium, as numbered unified diffs
   branding/      app icon, logo, BRANDING, the dmg background
-  build/         dev.gn and release.gn (the GN args)
+  build/         dev.gn and release.gn (the GN args), linux-dev.gn and linux-release.gn
+  linux/         the Linux launcher, desktop entry and PKGBUILD
   scripts/       apply, build, run, env, build-release, package-release,
-                 install-native-host, dmg-layout.py
+                 package-release-linux, install-native-host, dmg-layout.py
   shell/         the MV3 component extension that draws the window
     background.ts   service worker: the Store, tabs, windows
     features/       ad blocking, boosts, console errors, local servers, responsive view
