@@ -1,0 +1,41 @@
+# Flecha for Arch Linux (and Omarchy), from the tarball package-release-linux.sh makes.
+# That script copies this file beside the tarball with pkgver and the checksum filled in,
+# so `makepkg -si` there installs it.
+pkgname=flecha-bin
+pkgver=@VERSION@
+pkgrel=1
+pkgdesc='An Arc-style browser for developers, built on Chromium'
+arch=('x86_64')
+url='https://github.com/lucianodiisouza/flecha-browser'
+license=('MIT' 'BSD-3-Clause')
+depends=('alsa-lib' 'at-spi2-core' 'gtk3' 'hicolor-icon-theme' 'libcups' 'libxss' 'nss' 'ttf-liberation' 'xdg-utils')
+optdepends=(
+  'nodejs: importing from other browsers and the coding-agent MCP server (Node 22.5+)'
+  'kwallet: KDE password storage'
+  'libsecret: GNOME keyring password storage'
+  'qt6-base: Qt 6 file dialogs and theme'
+)
+provides=('flecha')
+conflicts=('flecha')
+options=('!strip' '!debug')
+source=("flecha-$pkgver-linux-x64.tar.xz")
+sha256sums=('@SHA256@')
+
+package() {
+  install -d "$pkgdir/opt"
+  cp -a "$srcdir/flecha" "$pkgdir/opt/flecha"
+
+  install -d "$pkgdir/usr/bin"
+  ln -s /opt/flecha/flecha "$pkgdir/usr/bin/flecha"
+  install -Dm644 "$srcdir/flecha/flecha.desktop" "$pkgdir/usr/share/applications/flecha.desktop"
+  for size in 16 24 48 64 128 256; do
+    install -Dm644 "$srcdir/flecha/product_logo_$size.png" \
+      "$pkgdir/usr/share/icons/hicolor/${size}x$size/apps/flecha.png"
+  done
+
+  # The native host, for every user (patch 0060 has Flecha look in /etc/flecha).
+  install -Dm644 "$srcdir/flecha/native-host/dev.oprimo.flecha.host.json" \
+    "$pkgdir/etc/flecha/native-messaging-hosts/dev.oprimo.flecha.host.json"
+
+  install -Dm644 "$srcdir/flecha/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

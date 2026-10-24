@@ -1,0 +1,22 @@
+[Desktop Entry]
+Version=1.0
+Name=Flecha
+GenericName=Web Browser
+Comment=An Arc-style browser for developers
+Exec=flecha %U
+StartupNotify=true
+StartupWMClass=flecha
+Terminal=false
+Icon=flecha
+Type=Application
+Categories=Network;WebBrowser;
+MimeType=text/html;text/xml;application/xhtml+xml;x-scheme-handler/http;x-scheme-handler/https;
+Actions=new-window;new-private-window;
+
+[Desktop Action new-window]
+Name=New Window
+Exec=flecha --new-window
+
+[Desktop Action new-private-window]
+Name=New Incognito Window
+Exec=flecha --incognito

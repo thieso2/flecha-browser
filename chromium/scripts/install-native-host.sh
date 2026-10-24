@@ -7,27 +7,37 @@
 #   FLECHA_PROFILE=<dir> chromium/scripts/install-native-host.sh  # same, as run.sh takes it
 #   chromium/scripts/install-native-host.sh --only <dir>    # that profile alone
 #   chromium/scripts/install-native-host.sh --app /Applications/Flecha.app  # a release app's
+#   chromium/scripts/install-native-host.sh --app /opt/flecha  # an unpacked Linux release's
 #
 # Chromium looks for user-level hosts in <user data dir>/NativeMessagingHosts
 # (chrome::DIR_USER_NATIVE_MESSAGING in chrome/common/chrome_paths.cc), and the user data dir
-# is ~/Library/Application Support/Flecha Browser unless --user-data-dir says otherwise
-# (patch 0001). Each of those folders gets the host's manifest.
+# is ~/Library/Application Support/Flecha Browser on macOS (patch 0001) and
+# ~/.config/flecha-browser on Linux (patch 0060) unless --user-data-dir says otherwise. Each
+# of those folders gets the host's manifest. The Arch package needs none of this: it
+# registers its host for every user in /etc/flecha/native-messaging-hosts (patch 0060).
 #
 # The host itself (a launcher and the bundled script) is copied to $FLECHA_HOST_DIR,
-# ~/Library/Application Support/Flecha Browser/native-host by default: Chromium starts hosts
+# <Flecha's user data dir>/native-host by default. On macOS Chromium starts hosts
 # disclaiming responsibility for them (launch_context_posix.cc), so macOS privacy rules
 # treat the host as its own app, which may not read ~/Documents, external disks and the
 # like. Run this again after changing the host.
 #
 # A release app (package-release.sh) carries its own host, Node included, at
-# Flecha.app/Contents/Resources/native-host/flecha-host. --app <Flecha.app> builds and copies
-# nothing and points the manifests at that one. Manifest paths must be absolute on macOS
+# Flecha.app/Contents/Resources/native-host/flecha-host; a Linux release
+# (package-release-linux.sh) at native-host/flecha-host, run by the system's Node.
+# --app <Flecha.app or release folder> builds and copies nothing and points the manifests at
+# that one. Manifest paths must be absolute on macOS
 # (launch_context.cc), so run it again if the app moves.
 set -euo pipefail
 here="$(cd "$(dirname "$0")/.." && pwd)"
 name="dev.oprimo.flecha.host"
 origin="chrome-extension://abdiaepfgbbhdjaecjipmaailijaaide/"
-host_dir="${FLECHA_HOST_DIR:-$HOME/Library/Application Support/Flecha Browser/native-host}"
+if [ "$(uname -s)" = Darwin ]; then
+  data_dir="$HOME/Library/Application Support/Flecha Browser"
+else
+  data_dir="${CHROME_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}}/flecha-browser"
+fi
+host_dir="${FLECHA_HOST_DIR:-$data_dir/native-host}"
 
 targets=()
 default=1
@@ -38,7 +48,7 @@ while [ $# -gt 0 ]; do
     --only) default=0 ;;
     --app)
       if [ $# -lt 2 ]; then
-        echo "error: --app needs a Flecha.app" >&2
+        echo "error: --app needs a Flecha.app or a Linux release folder" >&2
         exit 1
       fi
       app="$(cd "$2" && pwd)"
@@ -49,16 +59,20 @@ while [ $# -gt 0 ]; do
   shift
 done
 [ -n "${FLECHA_PROFILE:-}" ] && targets+=("$FLECHA_PROFILE")
-[ "$default" = 1 ] && targets+=("$HOME/Library/Application Support/Flecha Browser")
+[ "$default" = 1 ] && targets+=("$data_dir")
 if [ "${#targets[@]}" = 0 ]; then
   echo "error: --only needs a profile folder" >&2
   exit 1
 fi
 
 if [ -n "$app" ]; then
-  launcher="$app/Contents/Resources/native-host/flecha-host"
+  if [ -d "$app/Contents" ]; then
+    launcher="$app/Contents/Resources/native-host/flecha-host"
+  else
+    launcher="$app/native-host/flecha-host"
+  fi
   if [ ! -x "$launcher" ]; then
-    echo "error: $app has no native host ($launcher); package it with package-release.sh" >&2
+    echo "error: $app has no native host ($launcher); package it with package-release.sh or package-release-linux.sh" >&2
     exit 1
   fi
   echo "host in $app"

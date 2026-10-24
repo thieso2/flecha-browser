@@ -29,6 +29,10 @@
 # FLECHA_ARCH=x64 builds for Intel Macs instead, into out/Release-x64 (see env.sh); its
 # package step needs an Intel Node in FLECHA_NODE.
 #
+# On Linux the same steps build out/Release/chrome from chromium/build/linux-release.gn,
+# with no Sparkle (the package manager updates Flecha there) and no app version in args.gn,
+# then package-release-linux.sh makes flecha-<version>-linux-x64.tar.xz. --dmg is macOS only.
+#
 # Dev builds (build.sh, out/Dev) share the checkout: don't run both at once. The release app
 # uses the default profile folder, ~/Library/Application Support/Flecha Browser.
 set -euo pipefail
@@ -43,7 +47,13 @@ ninja_args=()
 for arg in "$@"; do
   case "$arg" in
     --no-package) package=0 ;;
-    --dmg) package_args+=(--dmg) ;;
+    --dmg)
+      if [ "$flecha_os" != mac ]; then
+        echo "error: --dmg is macOS only" >&2
+        exit 1
+      fi
+      package_args+=(--dmg)
+      ;;
     *) ninja_args+=("$arg") ;;
   esac
 done
@@ -69,7 +79,7 @@ step "patches"
 mkdir -p "$out"
 stamp="$out/flecha-applied.sha256"
 want="$(cat "$here"/patches/*.patch "$here/branding/BRANDING" "$here"/branding/mac/* \
-  "$here"/branding/logo/*.png | shasum -a 256 | cut -d' ' -f1)"
+  "$here"/branding/logo/*.png | sha256 | cut -d' ' -f1)"
 last="$(ls "$here"/patches/*.patch | tail -n 1)"
 if [ "${FLECHA_REAPPLY:-0}" != 1 ] && [ -f "$stamp" ] && [ "$(cat "$stamp")" = "$want" ] &&
   (cd "$src" && git apply --reverse --check "$last" 2>/dev/null); then
@@ -92,38 +102,44 @@ else
   echo "staged $staged"
 fi
 
-step "stage Sparkle at //flecha/Sparkle.framework"
-# The official Sparkle 2 release, pinned and checked (fetch-sparkle.sh); the
-# flecha_sparkle_framework GN arg (patch 0053) copies it into Contents/Frameworks.
-sparkle_dir="$("$here/scripts/fetch-sparkle.sh")"
-staged_sparkle="$src/flecha/Sparkle.framework"
-if diff -rq "$sparkle_dir/Sparkle.framework" "$staged_sparkle" >/dev/null 2>&1; then
-  echo "unchanged"
-else
-  rm -rf "$staged_sparkle"
-  mkdir -p "$src/flecha"
-  # cp -R keeps the framework's symlinks (Versions/Current and the top-level links), and,
-  # like the shell's, the fresh copy is newer than the one in the app, so the build copies it.
-  cp -R "$sparkle_dir/Sparkle.framework" "$staged_sparkle"
-  echo "staged $staged_sparkle"
+if [ "$flecha_os" = mac ]; then
+  step "stage Sparkle at //flecha/Sparkle.framework"
+  # The official Sparkle 2 release, pinned and checked (fetch-sparkle.sh); the
+  # flecha_sparkle_framework GN arg (patch 0053) copies it into Contents/Frameworks.
+  sparkle_dir="$("$here/scripts/fetch-sparkle.sh")"
+  staged_sparkle="$src/flecha/Sparkle.framework"
+  if diff -rq "$sparkle_dir/Sparkle.framework" "$staged_sparkle" >/dev/null 2>&1; then
+    echo "unchanged"
+  else
+    rm -rf "$staged_sparkle"
+    mkdir -p "$src/flecha"
+    # cp -R keeps the framework's symlinks (Versions/Current and the top-level links), and,
+    # like the shell's, the fresh copy is newer than the one in the app, so the build copies it.
+    cp -R "$sparkle_dir/Sparkle.framework" "$staged_sparkle"
+    echo "staged $staged_sparkle"
+  fi
 fi
 
 step "$(basename "$out")/args.gn"
-# release.gn is the arm64 build; FLECHA_ARCH=x64 (env.sh) swaps the CPU and the feed.
-args="$(sed -e "s/^target_cpu = .*/target_cpu = \"$FLECHA_ARCH\"/" \
-  -e "s|^flecha_sparkle_feed_url = \"https://flecha.dev/appcast.xml\"|flecha_sparkle_feed_url = \"https://flecha.dev/$release_feed\"|" \
-  "$here/build/release.gn")"
-# Flecha's own version (patch 0052): package.json's "version" is the one source of it, the
-# app's CFBundleShortVersionString. Its CFBundleVersion, which Sparkle compares to decide
-# what is newer, is Chromium's BUILD.PATCH plus a build counter: the number of commits in
-# Flecha's history (git rev-list --count HEAD), so it only ever grows, both across Flecha
-# releases on one Chromium and across Chromium updates (whose BUILD grows), and it is
-# already past the 8119.0 the first releases had. FLECHA_BUILD_NUMBER overrides the counter.
-flecha_version="$(node -p 'require(process.argv[1]).version' "$root/package.json")"
-flecha_build_number="${FLECHA_BUILD_NUMBER:-$(git -C "$root" rev-list --count HEAD)}"
-args="$args
+if [ "$flecha_os" = linux ]; then
+  args="$(cat "$here/build/linux-release.gn")"
+else
+  # release.gn is the arm64 build; FLECHA_ARCH=x64 (env.sh) swaps the CPU and the feed.
+  args="$(sed -e "s/^target_cpu = .*/target_cpu = \"$FLECHA_ARCH\"/" \
+    -e "s|^flecha_sparkle_feed_url = \"https://flecha.dev/appcast.xml\"|flecha_sparkle_feed_url = \"https://flecha.dev/$release_feed\"|" \
+    "$here/build/release.gn")"
+  # Flecha's own version (patch 0052): package.json's "version" is the one source of it, the
+  # app's CFBundleShortVersionString. Its CFBundleVersion, which Sparkle compares to decide
+  # what is newer, is Chromium's BUILD.PATCH plus a build counter: the number of commits in
+  # Flecha's history (git rev-list --count HEAD), so it only ever grows, both across Flecha
+  # releases on one Chromium and across Chromium updates (whose BUILD grows), and it is
+  # already past the 8119.0 the first releases had. FLECHA_BUILD_NUMBER overrides the counter.
+  flecha_version="$(node -p 'require(process.argv[1]).version' "$root/package.json")"
+  flecha_build_number="${FLECHA_BUILD_NUMBER:-$(git -C "$root" rev-list --count HEAD)}"
+  args="$args
 flecha_version = \"$flecha_version\"
 flecha_build_number = \"$flecha_build_number\""
+fi
 if [ "${FLECHA_OFFICIAL:-0}" = 1 ]; then
   args="$args
 is_official_build = true"
@@ -142,9 +158,17 @@ if [ ! -f "$out/build.ninja" ]; then
 fi
 
 step "autoninja -C $out chrome"
-caffeinate -i autoninja -C "$out" chrome ${ninja_args[@]+"${ninja_args[@]}"}
+if [ "$flecha_os" = mac ]; then
+  caffeinate -i autoninja -C "$out" chrome ${ninja_args[@]+"${ninja_args[@]}"}
+else
+  autoninja -C "$out" chrome ${ninja_args[@]+"${ninja_args[@]}"}
+fi
 
 if [ "$package" = 1 ]; then
   step "package"
-  "$here/scripts/package-release.sh" ${package_args[@]+"${package_args[@]}"}
+  if [ "$flecha_os" = mac ]; then
+    "$here/scripts/package-release.sh" ${package_args[@]+"${package_args[@]}"}
+  else
+    "$here/scripts/package-release-linux.sh"
+  fi
 fi

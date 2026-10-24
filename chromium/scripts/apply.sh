@@ -16,6 +16,10 @@ git checkout -- chrome/app/theme/chromium
 cp "$here/branding/BRANDING" "$theme/BRANDING"
 cp "$here/branding/mac/app.icns" "$here/branding/mac/Assets.car" "$theme/mac/"
 for png in "$here"/branding/logo/*.png; do cp "$png" "$theme/"; done
+# The Linux window and installer icons, at the sizes Chromium keeps there.
+for size in 24 48 64 128 256; do
+  cp "$here/branding/logo/product_logo_$size.png" "$theme/linux/"
+done
 
 for p in "$here"/patches/*.patch; do
   echo "patch: $(basename "$p")"

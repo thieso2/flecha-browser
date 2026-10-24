@@ -1,0 +1,21 @@
+#!/bin/bash
+# Starts Flecha from its install folder (this script's, through the /usr/bin/flecha link)
+# with the flags in /etc/flecha-flags.conf and $XDG_CONFIG_HOME/flecha-flags.conf, one or
+# more per line, # starting a comment: the same convention as Arch's chromium-flags.conf.
+set -euo pipefail
+here="$(dirname "$(readlink -f "$0")")"
+config="${XDG_CONFIG_HOME:-$HOME/.config}"
+
+flags=()
+for file in /etc/flecha-flags.conf "$config/flecha-flags.conf"; do
+  [ -r "$file" ] || continue
+  while read -r line; do
+    line="${line%%#*}"
+    # shellcheck disable=SC2206 # one line may hold several flags, split like Arch's launcher
+    [ -n "${line// /}" ] && flags+=($line)
+  done <"$file"
+done
+
+# Chromium relaunches itself (after an update of its flags, say) through this script.
+export CHROME_WRAPPER="$here/flecha"
+exec "$here/chrome" "${flags[@]}" "$@"
