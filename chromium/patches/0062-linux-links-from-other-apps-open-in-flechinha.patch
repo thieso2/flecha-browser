@@ -19,7 +19,7 @@ diff --git a/chrome/browser/chrome_browser_main.cc b/chrome/browser/chrome_brows
  #include "chrome/browser/ui/views/chrome_browser_main_extra_parts_views_linux.h"
  #endif
  
-@@ -537,6 +540,42 @@
+@@ -537,6 +540,43 @@
  #endif
  
  #if BUILDFLAG(ENABLE_PROCESS_SINGLETON)
@@ -32,6 +32,7 @@ diff --git a/chrome/browser/chrome_browser_main.cc b/chrome/browser/chrome_brows
 +                          const StartupProfilePathInfo& profile_path_info) {
 +  if (profile_path_info.mode != StartupProfileMode::kBrowserWindow ||
 +      command_line.HasSwitch(switches::kIncognito) ||
++      command_line.HasSwitch(switches::kOpenInNewWindow) ||
 +      command_line.HasSwitch(switches::kApp) ||
 +      command_line.HasSwitch(switches::kAppId)) {
 +    return false;
@@ -62,7 +63,7 @@ diff --git a/chrome/browser/chrome_browser_main.cc b/chrome/browser/chrome_brows
  void ProcessSingletonNotificationCallbackImpl(
      base::CommandLine command_line,
      const base::FilePath& current_directory) {
-@@ -562,6 +601,13 @@
+@@ -562,6 +602,13 @@
    CHECK_NE(startup_profile_path_info.mode, StartupProfileMode::kError,
             base::NotFatalUntil::M162);
  
