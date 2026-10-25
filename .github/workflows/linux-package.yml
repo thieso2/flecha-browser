@@ -1,7 +1,7 @@
 # Builds Flecha for Arch Linux and Omarchy and publishes it as a GitHub release: the pacman
-# package of flecha-git, and the tarball with the flecha-bin PKGBUILD that installs it. With an
-# AUR_SSH_PRIVATE_KEY secret (an SSH key registered on an AUR account), it also pushes
-# flecha-bin and flecha-git to the AUR, so `yay -S flecha-bin` installs this build.
+# package of flecha-git, and the tarball with the flecha-bin PKGBUILD that installs it. Then
+# linux-aur.yml pushes flecha-bin and flecha-git to the AUR when an AUR_SSH_PRIVATE_KEY secret
+# is set, so `yay -S flecha-bin` installs this build.
 #
 # One build takes longer than a GitHub-hosted job may run, so it runs in up to five stages
 # (linux-stage.yml), each carrying on from the one before.
@@ -86,42 +86,9 @@ jobs:
 
   aur:
     needs: release
-    runs-on: ubuntu-24.04
-    env:
-      AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
-    steps:
-      - name: Skip without an AUR key
-        if: env.AUR_SSH_PRIVATE_KEY == ''
-        run: echo "No AUR_SSH_PRIVATE_KEY secret; the release is on GitHub only."
-      - uses: actions/checkout@v5
-        if: env.AUR_SSH_PRIVATE_KEY != ''
-      - uses: actions/download-artifact@v4
-        if: env.AUR_SSH_PRIVATE_KEY != ''
-        with:
-          name: flecha-package
-          path: dist
-      - name: Push flecha-bin and flecha-git to the AUR
-        if: env.AUR_SSH_PRIVATE_KEY != ''
-        run: |
-          install -d -m700 ~/.ssh
-          printf '%s\n' "$AUR_SSH_PRIVATE_KEY" >~/.ssh/aur
-          chmod 600 ~/.ssh/aur
-          ssh-keyscan -t ed25519,rsa aur.archlinux.org >>~/.ssh/known_hosts
-          export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/aur -o IdentitiesOnly=yes"
-          git config --global user.name "${{ github.repository_owner }}"
-          git config --global user.email "${{ github.repository_owner }}@users.noreply.github.com"
-          publish() { # publish <package> <folder with PKGBUILD and .SRCINFO>
-            git clone "ssh://aur@aur.archlinux.org/$1.git" "aur-$1"
-            cp "$2/PKGBUILD" "$2/.SRCINFO" "aur-$1/"
-            cd "aur-$1"
-            git add PKGBUILD .SRCINFO
-            if git diff --cached --quiet; then
-              echo "$1 is unchanged"
-            else
-              git commit -m "Update to ${{ needs.release.outputs.tag }}"
-              git push origin HEAD:master
-            fi
-            cd ..
-          }
-          publish flecha-bin dist
-          publish flecha-git chromium/linux/aur
+    # always(): stages skipped after the build finished would otherwise skip this job too.
+    if: ${{ always() && needs.release.result == 'success' }}
+    uses: ./.github/workflows/linux-aur.yml
+    with:
+      tag: ${{ needs.release.outputs.tag }}
+    secrets: inherit

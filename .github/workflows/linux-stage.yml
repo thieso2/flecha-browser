@@ -1,5 +1,5 @@
 # One stage of linux-package.yml: restores the previous stage's build folder, builds for at
-# most four and a half hours (chromium/linux/ci/stage.sh) and saves the folder for the next
+# most 315 minutes (chromium/linux/ci/stage.sh) and saves the folder for the next
 # stage, or uploads the packages when the build is complete. Chromium takes longer than one
 # GitHub-hosted job may run, hence the stages.
 name: Linux build stage
@@ -62,7 +62,7 @@ jobs:
           fi
           sudo docker run --rm -v "$GITHUB_WORKSPACE:/repo:ro" -v "$WORK:/build" \
             -e FLECHA_COMMIT="$GITHUB_SHA" -e FLECHA_PKGREL="$GITHUB_RUN_NUMBER" \
-            archlinux:latest /repo/chromium/linux/ci/stage.sh 270
+            archlinux:latest /repo/chromium/linux/ci/stage.sh 315
           if [ -f "$WORK/done" ]; then
             echo "done=true" >>"$GITHUB_OUTPUT"
           else

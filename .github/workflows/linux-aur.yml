@@ -1,0 +1,83 @@
+# Pushes a Linux release (linux-package.yml) to the AUR: flecha-bin, with the PKGBUILD attached
+# to the release, and flecha-git, from the release's commit. It needs an AUR_SSH_PRIVATE_KEY
+# secret, the private half of an SSH key registered on the AUR account that maintains them;
+# without one it does nothing. linux-package.yml calls it after each release; run it by hand to
+# publish an existing release.
+name: Publish to the AUR
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The release to publish (linux-v<version>-<run>)
+        type: string
+        required: true
+  workflow_call:
+    inputs:
+      tag:
+        type: string
+        required: true
+    secrets:
+      AUR_SSH_PRIVATE_KEY:
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    env:
+      AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+      TAG: ${{ inputs.tag }}
+    steps:
+      - name: Skip without an AUR key
+        if: env.AUR_SSH_PRIVATE_KEY == ''
+        run: echo "No AUR_SSH_PRIVATE_KEY secret; $TAG stays on GitHub only."
+
+      - uses: actions/checkout@v5
+        if: env.AUR_SSH_PRIVATE_KEY != ''
+        with:
+          ref: ${{ inputs.tag }}
+
+      - name: Gather the PKGBUILDs
+        if: env.AUR_SSH_PRIVATE_KEY != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p aur/flecha-bin aur/flecha-git
+          gh release download "$TAG" --pattern PKGBUILD --dir aur/flecha-bin
+          cp chromium/linux/aur/PKGBUILD aur/flecha-git/
+          # .SRCINFO is what the AUR reads; only makepkg writes it faithfully.
+          sudo docker run --rm -v "$PWD/aur:/aur" archlinux:latest bash -c '
+            set -e
+            pacman -Sy --noconfirm --needed base-devel >/dev/null
+            useradd -m builder
+            chown -R builder: /aur
+            for pkg in /aur/*/; do
+              (cd "$pkg" && runuser -u builder -- makepkg --printsrcinfo >.SRCINFO)
+            done'
+          sudo chown -R "$USER" aur
+          head -5 aur/*/.SRCINFO
+
+      - name: Push to the AUR
+        if: env.AUR_SSH_PRIVATE_KEY != ''
+        run: |
+          install -d -m700 ~/.ssh
+          printf '%s\n' "$AUR_SSH_PRIVATE_KEY" >~/.ssh/aur
+          chmod 600 ~/.ssh/aur
+          ssh-keyscan -t ed25519,rsa aur.archlinux.org >>~/.ssh/known_hosts
+          export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/aur -o IdentitiesOnly=yes"
+          git config --global user.name "${{ github.repository_owner }}"
+          git config --global user.email "${{ github.repository_owner }}@users.noreply.github.com"
+          for pkg in flecha-bin flecha-git; do
+            git clone "ssh://aur@aur.archlinux.org/$pkg.git" "aur-repo-$pkg"
+            cp "aur/$pkg/PKGBUILD" "aur/$pkg/.SRCINFO" "aur-repo-$pkg/"
+            git -C "aur-repo-$pkg" add PKGBUILD .SRCINFO
+            if git -C "aur-repo-$pkg" diff --cached --quiet; then
+              echo "$pkg is unchanged"
+            else
+              git -C "aur-repo-$pkg" commit -m "Update to $TAG"
+              git -C "aur-repo-$pkg" push origin HEAD:master
+            fi
+          done
